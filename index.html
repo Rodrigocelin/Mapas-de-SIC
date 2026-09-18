@@ -256,7 +256,7 @@
     <h1>Relatório Técnico</h1>
 
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <div class="btn-tela active" id="tabVistoria" onclick="mostrarTela('vistoria')">📋 Vistoria</div>
+      <div class="btn-tela active" id="tabVistoria" onclick="abrirVistoriaEmBranco()">📋 Vistoria</div>
       <div class="btn-tela" id="tabSics" onclick="mostrarTela('sics')">🗺️ Mapa de SICs</div>
     </div>
 
@@ -324,6 +324,7 @@
     </form>
 
     <button type="button" class="btn-pdf" onclick="gerarPDF()">📥 Gerar e Baixar Relatório</button>
+    <div id="vistoriaPdfStatus" style="font-size:12px;color:#666;margin-top:4px"></div>
     <button type="button" class="btn-limpar" onclick="limparFormulario()">🗑️ Limpar Formulário</button>
     </div>
 
@@ -335,7 +336,7 @@
       </div>
       <div id="mapaSics" style="height:420px;border-radius:6px;margin-bottom:10px"></div>
       <div id="legendaSics" style="display:flex;gap:14px;margin-bottom:10px;font-size:13px;color:#444">
-        <span>🔴 Pendente</span><span>🟠 Em andamento</span><span>🟢 Concluído</span>
+        <span>🔴 Pendente</span><span>🟠 Em andamento</span><span>🔵 Concluído</span>
       </div>
       <button type="button" class="btn-gps" onclick="abrirFormSic()">+ Novo SIC</button>
       <div style="display:flex;gap:8px;margin-top:8px">
@@ -375,6 +376,7 @@
         <select id="sicStatus"><option>Pendente</option><option>Em andamento</option><option>Concluído</option></select>
         <label>Observações</label>
         <textarea id="sicObs"></textarea>
+        <div id="sicParecerStatus" style="font-size:12px;margin:4px 0;color:#666"></div>
         <div style="display:flex;gap:8px;margin-top:12px">
           <button type="button" onclick="salvarSic()" class="btn-pdf" style="margin-top:0;flex:1">💾 Salvar SIC</button>
           <button type="button" onclick="fecharFormSic()" class="btn-limpar" style="margin-top:0">Cancelar</button>
@@ -464,6 +466,7 @@
     let mapa, marcador;
     let latitude = null;
     let longitude = null;
+    let vistoriaSicId = null; // quando a vistoria foi iniciada a partir de um SIC, guarda o id pra vincular o PDF gerado a esse ponto
     let mapaImagemBase64 = null;
     let contadorArvores = 0;
     
@@ -590,8 +593,12 @@
       }
     }
 
-    function mostrarTela(nome) {
-      document.getElementById('telaVistoria').style.display = nome === 'vistoria' ? 'block' : 'none';
+    function abrirVistoriaEmBranco() {
+      vistoriaSicId = null; // clicar direto na aba Vistoria não deve herdar vínculo de um SIC anterior
+      mostrarTela('vistoria');
+    }
+
+    function mostrarTela(nome) {      document.getElementById('telaVistoria').style.display = nome === 'vistoria' ? 'block' : 'none';
       document.getElementById('telaSics').style.display = nome === 'sics' ? 'block' : 'none';
       document.getElementById('tabVistoria').classList.toggle('active', nome === 'vistoria');
       document.getElementById('tabSics').classList.toggle('active', nome === 'sics');
@@ -644,6 +651,7 @@
         document.getElementById('sicData').value = s.dataSolicitacao || '';
         document.getElementById('sicStatus').value = s.status || 'Pendente';
         document.getElementById('sicObs').value = s.observacoes || '';
+        atualizarStatusParecer(s.parecerPdfUrl);
         if (s.lat && s.lng) {
           definirLocalSic(s.lat, s.lng);
           mapaSics.setView([s.lat, s.lng], 17);
@@ -653,10 +661,22 @@
         document.getElementById('sicTipoServico').value = '';
         document.getElementById('sicStatus').value = 'Pendente';
         document.getElementById('sicResultadosBusca').innerHTML = '';
+        atualizarStatusParecer(null);
         const coordsEl = document.getElementById('sicCoords');
         coordsEl.textContent = 'Toque no mapa para marcar o local, ou busque o endereço acima.';
         delete coordsEl.dataset.lat;
         delete coordsEl.dataset.lng;
+      }
+    }
+
+    function atualizarStatusParecer(url) {
+      const el = document.getElementById('sicParecerStatus');
+      if (url) {
+        el.innerHTML = `📄 Já existe um parecer (relatório) em PDF vinculado a este ponto — <a href="${url}" target="_blank" rel="noopener">abrir PDF</a>.`;
+        el.style.color = '#2e7d32';
+      } else {
+        el.textContent = 'Nenhum parecer/relatório em PDF vinculado a este ponto ainda. Gere pela aba Vistoria, clicando em "Iniciar Vistoria" a partir deste SIC.';
+        el.style.color = '#666';
       }
     }
 
@@ -703,6 +723,10 @@
       const lat = parseFloat(coordsEl.dataset.lat), lng = parseFloat(coordsEl.dataset.lng);
       if (isNaN(lat) || isNaN(lng)) { alert('Marque o local no mapa ou busque o endereço antes de salvar.'); return; }
 
+      // Preserva o link do PDF já gerado (e outros campos que o formulário não edita),
+      // já que salvar aqui reescreve a linha inteira na planilha.
+      const existente = sicEditandoId ? sics.find(s => s.id === sicEditandoId) : null;
+
       const sic = {
         id: sicEditandoId || ('sic_' + Date.now()),
         protocolo: document.getElementById('sicProtocolo').value,
@@ -714,7 +738,8 @@
         tipoServico: document.getElementById('sicTipoServico').value,
         dataSolicitacao: document.getElementById('sicData').value,
         status: document.getElementById('sicStatus').value,
-        observacoes: document.getElementById('sicObs').value
+        observacoes: document.getElementById('sicObs').value,
+        parecerPdfUrl: existente ? (existente.parecerPdfUrl || '') : ''
       };
 
       // Salva localmente sempre (garante que nada se perde mesmo sem internet)
@@ -816,12 +841,16 @@
       if (!mapaSics) return;
       marcadoresSics.forEach(m => mapaSics.removeLayer(m));
       marcadoresSics = [];
-      const cores = { 'Pendente': '#e53935', 'Em andamento': '#fb8c00', 'Concluído': '#2e7d32' };
+      const cores = { 'Pendente': '#e53935', 'Em andamento': '#fb8c00', 'Concluído': '#1565c0' };
       sics.forEach(s => {
         const cor = cores[s.status] || '#455a64';
+        const temParecer = !!s.parecerPdfUrl;
         const icone = L.divIcon({
           className: '',
-          html: `<div style="width:16px;height:16px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,0.6)"></div>`,
+          html: `<div style="position:relative;width:16px;height:16px">
+                   <div style="width:16px;height:16px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,0.6)"></div>
+                   ${temParecer ? '<div style="position:absolute;top:-6px;right:-8px;font-size:12px;line-height:1">📄</div>' : ''}
+                 </div>`,
           iconSize: [16, 16], iconAnchor: [8, 8]
         });
         const marker = L.marker([s.lat, s.lng], { icon: icone }).addTo(mapaSics);
@@ -833,6 +862,7 @@
             ${s.tipoServico ? 'Serviço: ' + s.tipoServico + '<br>' : ''}
             Status: <b>${s.status}</b><br>
             ${s.observacoes ? 'Obs: ' + s.observacoes + '<br>' : ''}
+            ${temParecer ? '<a href="' + s.parecerPdfUrl + '" target="_blank" rel="noopener">📄 Ver Parecer (PDF)</a><br>' : '<span style="color:#999">Sem parecer gerado</span><br>'}
             <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
               <button onclick="iniciarVistoriaDeSic('${s.id}')" style="background:#2e7d32;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Iniciar Vistoria</button>
               <button onclick="abrirFormSic('${s.id}')" style="background:#455a64;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Editar</button>
@@ -844,15 +874,31 @@
       });
     }
 
+    function sincronizarStatusSic(sic) {
+      if (!sicsApiUrl) return;
+      fetch(sicsApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'save', sic })
+      }).catch(() => {
+        // Sem internet agora — o status já ficou salvo neste aparelho. Na próxima vez que
+        // esse SIC for salvo/editado com internet disponível, o status correto é reenviado.
+      });
+    }
+
     function iniciarVistoriaDeSic(id) {
       const s = sics.find(x => x.id === id);
       if (!s) return;
+
+      vistoriaSicId = id; // o PDF gerado a partir daqui fica vinculado a este SIC
 
       // Marca como "Em andamento" automaticamente ao iniciar a vistoria a partir do SIC
       // (a conclusão continua sendo manual, já que uma vistoria pode não resolver o SIC de primeira)
       if (s.status === 'Pendente') {
         s.status = 'Em andamento';
         localStorage.setItem('sics', JSON.stringify(sics));
+        renderMarcadoresSics();
+        sincronizarStatusSic(s);
       }
 
       mostrarTela('vistoria');
@@ -1589,6 +1635,7 @@
 
     function limparFormulario() {
       if (!confirm('Limpar todos os dados do formulário? O número do relatório não será consumido.')) return;
+      vistoriaSicId = null;
 
       // Reseta referência
       document.getElementById('referencia').value = '';
@@ -1980,6 +2027,7 @@
       btnPdf.disabled = true;
 
       function limparAposGerar() {
+        vistoriaSicId = null;
         document.getElementById('referencia').value = '';
         document.querySelectorAll('.btn-ref').forEach(b => b.classList.remove('active'));
         document.getElementById('numeroReferencia').value = '';
@@ -2404,6 +2452,36 @@
           });
 
           addRodape(numPag, totalPaginas);
+        }
+
+        // Se essa vistoria foi iniciada a partir de um SIC ("Iniciar Vistoria" no mapa),
+        // vincula o PDF gerado a esse ponto: sobe pro Drive via planilha e salva o link na linha do SIC.
+        const sicVinculado = vistoriaSicId;
+        const statusPdfEl = document.getElementById('vistoriaPdfStatus');
+        if (sicVinculado && sicsApiUrl) {
+          statusPdfEl.textContent = '🔄 Vinculando relatório ao ponto no mapa...';
+          statusPdfEl.style.color = '#666';
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+          fetch(sicsApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'uploadParecer', id: sicVinculado, nomeArquivo, pdfBase64 })
+          }).then(r => r.json()).then(dados => {
+            if (!dados.ok) throw new Error(dados.erro || 'Erro ao vincular relatório');
+            sics = sics.map(s => s.id === sicVinculado ? { ...s, parecerPdfUrl: dados.url } : s);
+            localStorage.setItem('sics', JSON.stringify(sics));
+            if (typeof renderMarcadoresSics === 'function') renderMarcadoresSics();
+            statusPdfEl.textContent = '🟢 Relatório vinculado ao ponto — já pode ser consultado em campo (ícone 📄 no mapa).';
+            statusPdfEl.style.color = '#2e7d32';
+          }).catch(e => {
+            statusPdfEl.textContent = '🔴 PDF baixado normalmente, mas não foi possível vincular ao ponto agora (sem internet?): ' + e.message;
+            statusPdfEl.style.color = '#c62828';
+          });
+        } else if (sicVinculado && !sicsApiUrl) {
+          statusPdfEl.textContent = '⚠️ PDF baixado. Configure a conexão com a planilha (aba Mapa de SICs → Configurar Planilha) para também vincular o relatório ao ponto.';
+          statusPdfEl.style.color = '#e65100';
+        } else {
+          statusPdfEl.textContent = '';
         }
 
         doc.save(nomeArquivo);
