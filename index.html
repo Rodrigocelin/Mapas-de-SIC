@@ -6,6 +6,9 @@
   <title>Relatório Técnico - Arborização Urbana</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-image@0.4.0/leaflet-image.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,13 +16,33 @@
   <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 16px; }
-    .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    h1 { margin-top: 0; color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; font-size: 22px; }
-    h2 { margin-top: 0; font-size: 15px; background: #e8f5e9; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; color: #1b5e20; }
-    label { display: block; margin-top: 10px; font-weight: bold; color: #333; font-size: 14px; }
-    input, textarea, select { width: 100%; padding: 10px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; /* evita zoom automático no iOS */ }
-    input[readonly] { background: #eee; cursor: not-allowed; }
+    :root {
+      --color-primary: #1E6B4F;
+      --color-primary-dark: #14503B;
+      --color-primary-soft: #E7F2EC;
+      --color-surface: #FFFFFF;
+      --color-bg: #F7F8FA;
+      --color-text: #1F2937;
+      --color-text-muted: #6B7280;
+      --color-border: #D9DDE3;
+      --color-neutral: #43525C;
+      --color-neutral-dark: #34424B;
+      --color-danger: #C62828;
+      --color-danger-soft: #FDECEA;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-card: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.08);
+    }
+
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--color-bg); margin: 0; padding: 16px; color: var(--color-text); }
+    .container { max-width: 900px; margin: auto; background: var(--color-surface); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); border: 1px solid #EEF0F2; }
+    h1 { margin: 0 0 18px; color: var(--color-primary); border-bottom: 2px solid var(--color-primary-soft); padding-bottom: 12px; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+    h2 { margin-top: 0; font-size: 14px; background: var(--color-primary); padding: 12px 14px; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: 600; }
+    label { display: block; margin-top: 12px; font-weight: 500; color: var(--color-text-muted); font-size: 13px; }
+    input, textarea, select { width: 100%; padding: 10px 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 16px; font-family: inherit; color: var(--color-text); background: #fff; transition: border-color .15s ease, box-shadow .15s ease; /* evita zoom automático no iOS */ }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(30,107,79,0.14); }
+    input[readonly] { background: #F1F2F4; cursor: not-allowed; color: var(--color-text-muted); }
 
     .grid-endereco { display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; }
     .grid-arvore { display: grid; grid-template-columns: 90px 90px 90px; gap: 12px; }
@@ -30,7 +53,7 @@
     /* Tablet (até 768px) */
     @media (max-width: 768px) {
       body { padding: 10px; }
-      .container { padding: 14px; border-radius: 6px; }
+      .container { padding: 16px; border-radius: var(--radius-md); }
       h1 { font-size: 20px; }
       .grid-endereco { grid-template-columns: 1fr 80px; }
       .grid-endereco > div:first-child { grid-column: 1 / -1; }
@@ -43,8 +66,8 @@
 
     /* Smartphone (até 480px) */
     @media (max-width: 480px) {
-      body { padding: 6px; }
-      .container { padding: 12px; border-radius: 4px; }
+      body { padding: 8px; }
+      .container { padding: 14px; border-radius: var(--radius-md); }
       h1 { font-size: 18px; }
       h2 { font-size: 14px; }
       .grid-endereco, .grid-plantio, .grid-responsavel { grid-template-columns: 1fr; }
@@ -57,62 +80,66 @@
       .btn-pdf, .btn-limpar { font-size: 15px; padding: 14px; }
     }
 
-    .bloco-arvore { border: 1px solid #ddd; padding: 15px; margin-top: 20px; border-radius: 6px; background: #fafafa; position: relative; }
-    .btn-remove { background: #c62828; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .bloco-arvore { border: 1px solid var(--color-border); padding: 16px; margin-top: 20px; border-radius: var(--radius-md); background: #FCFCFD; position: relative; }
+    .btn-remove { background: var(--color-danger); color: #fff; border: none; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 600; }
 
-    button { margin-top: 16px; padding: 12px 18px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-    .btn-primary { background: #1976d2; color: #fff; width: 100%; font-size: 16px; }
-    .btn-primary:hover { background: #115293; }
-    .btn-add { background: #2e7d32; color: #fff; }
-    .btn-gps { background: #455a64; color: #fff; display: flex; align-items: center; gap: 8px; width: 100%; justify-content: center; }
+    button { margin-top: 16px; padding: 12px 18px; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-family: inherit; transition: background-color .15s ease, border-color .15s ease, opacity .15s ease; }
+    .btn-primary { background: var(--color-primary); color: #fff; width: 100%; font-size: 16px; }
+    .btn-primary:hover { background: var(--color-primary-dark); }
+    .btn-add { background: var(--color-primary); color: #fff; }
+    .btn-add:hover { background: var(--color-primary-dark); }
+    .btn-gps { background: var(--color-neutral); color: #fff; display: flex; align-items: center; gap: 8px; width: 100%; justify-content: center; }
+    .btn-gps:hover { background: var(--color-neutral-dark); }
 
-    #mapa { height: 300px; width: 100%; border-radius: 6px; border: 1px solid #ccc; margin-top: 10px; position: relative; z-index: 0; box-sizing: border-box; }
+    #mapa { height: 300px; width: 100%; border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-top: 10px; position: relative; z-index: 0; box-sizing: border-box; }
     .leaflet-container { touch-action: pan-x pan-y; }
-    .coords { margin-top: 8px; font-size: 13px; font-family: monospace; color: #555; background: #eee; padding: 5px; border-radius: 4px; word-break: break-all; }
+    .coords { margin-top: 8px; font-size: 12px; font-family: 'SFMono-Regular', Consolas, monospace; color: var(--color-text-muted); background: #F1F2F4; padding: 6px 8px; border-radius: var(--radius-sm); word-break: break-all; }
 
     .grid-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
     .grid-fotos-arvore { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
-    .foto-item { display: flex; flex-direction: column; gap: 6px; background: #f9f9f9; padding: 8px; border: 1px dashed #bbb; border-radius: 4px; }
-    .preview { width: 100%; height: 160px; object-fit: contain; background: #000; border: 1px solid #ccc; border-radius: 4px; display: none; }
+    .foto-item { display: flex; flex-direction: column; gap: 6px; background: #FAFAFB; padding: 8px; border: 1px dashed #C7CCD2; border-radius: var(--radius-md); }
+    .preview { width: 100%; height: 160px; object-fit: contain; background: #000; border: 1px solid var(--color-border); border-radius: var(--radius-md); display: none; }
     @media (max-width: 480px) { .grid-fotos, .grid-fotos-arvore { grid-template-columns: 1fr; } }
 
     .btn-group-ref { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
-    .btn-ref { background: #fff; border: 2px solid #455a64; color: #455a64; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; text-align: center; font-size: 14px; }
-    .btn-ref.active { background: #455a64; color: #fff; }
-    .btn-tela { flex: 1; background: #fff; border: 2px solid #2e7d32; color: #2e7d32; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; text-align: center; font-size: 14px; }
-    .btn-tela.active { background: #2e7d32; color: #fff; }
-    .sic-resultado-item { padding: 8px; border: 1px solid #ddd; border-top: none; cursor: pointer; font-size: 13px; background: #fff; }
-    .sic-resultado-item:hover { background: #f1f8f1; }
-    .modal-sic { display: none; margin-top: 10px; padding: 14px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+    .btn-ref { background: #fff; border: 1.5px solid var(--color-border); color: var(--color-text); padding: 10px; cursor: pointer; font-weight: 600; border-radius: var(--radius-md); text-align: center; font-size: 14px; transition: all .15s ease; }
+    .btn-ref.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .btn-tela { flex: 1; background: #F1F2F4; border: 1.5px solid transparent; color: var(--color-text-muted); padding: 10px; cursor: pointer; font-weight: 600; border-radius: var(--radius-md); text-align: center; font-size: 14px; transition: all .15s ease; }
+    .btn-tela.active { background: var(--color-primary); color: #fff; }
+    .sic-resultado-item { padding: 10px; border: 1px solid var(--color-border); border-top: none; cursor: pointer; font-size: 13px; background: #fff; }
+    .sic-resultado-item:hover { background: var(--color-primary-soft); }
+    .modal-sic { display: none; margin-top: 10px; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-card); }
     .btn-group-posicao { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-    .btn-posicao { background: #fff; border: 2px solid #455a64; color: #455a64; padding: 6px 10px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 12px; margin: 0; }
-    .btn-posicao.active { background: #455a64; color: #fff; }
+    .btn-posicao { background: #fff; border: 1.5px solid var(--color-border); color: var(--color-text); padding: 6px 10px; cursor: pointer; font-weight: 600; border-radius: var(--radius-sm); font-size: 12px; margin: 0; transition: all .15s ease; }
+    .btn-posicao.active { background: var(--color-neutral); border-color: var(--color-neutral); color: #fff; }
     .btn-group-servico { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
-    .btn-servico { background: #fff; border: 2px solid #1976d2; color: #1976d2; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; text-align: center; }
-    .btn-servico.active { background: #1976d2; color: #fff; }
+    .btn-servico { background: #fff; border: 1.5px solid var(--color-border); color: var(--color-text); padding: 10px; cursor: pointer; font-weight: 600; border-radius: var(--radius-md); text-align: center; transition: all .15s ease; }
+    .btn-servico.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 
-    .btn-pdf { background: #2e7d32; color: #fff; width: 100%; font-size: 16px; margin-top: 10px; }
-    .diag-widget { border: 1px solid #ccc; border-radius: 4px; padding: 8px; background: #fafafa; margin-top: 4px; }
-    .diag-busca { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 6px; font-size: 14px; }
-    .diag-lista { max-height: 180px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: #fff; }
-    .diag-lista-item { padding: 8px 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
-    .diag-lista-item:hover { background: #e8f5e9; }
-    .diag-lista-item.marcado { background: #e8f5e9; font-weight: bold; }
-    .diag-lista-item .diag-check { width: 16px; height: 16px; border: 2px solid #2e7d32; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; color: #2e7d32; }
+    .btn-pdf { background: var(--color-primary); color: #fff; width: 100%; font-size: 16px; margin-top: 10px; }
+    .diag-widget { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px; background: #FCFCFD; margin-top: 4px; }
+    .diag-busca { width: 100%; padding: 9px; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 6px; font-size: 14px; font-family: inherit; }
+    .diag-lista { max-height: 180px; overflow-y: auto; border: 1px solid #EEF0F2; border-radius: var(--radius-md); background: #fff; }
+    .diag-lista-item { padding: 9px 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #F1F2F4; display: flex; align-items: center; gap: 8px; }
+    .diag-lista-item:hover { background: var(--color-primary-soft); }
+    .diag-lista-item.marcado { background: var(--color-primary-soft); font-weight: 600; }
+    .diag-lista-item .diag-check { width: 16px; height: 16px; border: 2px solid var(--color-primary); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; color: var(--color-primary); }
     .diag-selecionados { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .diag-tag { background: #455a64; color: #fff; border-radius: 20px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-    .diag-tag-remove { cursor: pointer; font-weight: bold; font-size: 14px; line-height: 1; }
-    .esp-widget { border: 1px solid #ccc; border-radius: 4px; padding: 8px; background: #fafafa; margin-top: 4px; }
-    .esp-busca { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 6px; font-size: 14px; }
-    .esp-lista { max-height: 160px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: #fff; }
-    .esp-lista-item { padding: 8px 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
-    .esp-lista-item:hover { background: #e8f5e9; }
-    .esp-lista-item.selecionado { background: #e8f5e9; font-weight: bold; }
-    .esp-selecionada { display: flex; align-items: center; justify-content: space-between; background: #455a64; color: #fff; border-radius: 20px; padding: 5px 12px; font-size: 13px; margin-top: 6px; }
-    .esp-selecionada-remove { cursor: pointer; font-weight: bold; font-size: 16px; line-height: 1; margin-left: 8px; }
-    .btn-pdf:hover { background: #1b5e20; }
-    .btn-limpar { background: #fff; color: #c62828; border: 2px solid #c62828; width: 100%; font-size: 15px; margin-top: 8px; }
-    .btn-limpar:hover { background: #ffebee; }
+    .diag-tag { background: var(--color-neutral); color: #fff; border-radius: 20px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 6px; font-weight: 500; }
+    .diag-tag-remove { cursor: pointer; font-weight: 700; font-size: 14px; line-height: 1; }
+    .esp-widget { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px; background: #FCFCFD; margin-top: 4px; }
+    .esp-busca { width: 100%; padding: 9px; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 6px; font-size: 14px; font-family: inherit; }
+    .esp-lista { max-height: 160px; overflow-y: auto; border: 1px solid #EEF0F2; border-radius: var(--radius-md); background: #fff; }
+    .esp-lista-item { padding: 9px 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #F1F2F4; }
+    .esp-lista-item:hover { background: var(--color-primary-soft); }
+    .esp-lista-item.selecionado { background: var(--color-primary-soft); font-weight: 600; }
+    .esp-selecionada { display: flex; align-items: center; justify-content: space-between; background: var(--color-neutral); color: #fff; border-radius: 20px; padding: 5px 12px; font-size: 13px; margin-top: 6px; font-weight: 500; }
+    .esp-selecionada-remove { cursor: pointer; font-weight: 700; font-size: 16px; line-height: 1; margin-left: 8px; }
+    .btn-pdf:hover { background: var(--color-primary-dark); }
+    .btn-limpar { background: #fff; color: var(--color-danger); border: 1.5px solid var(--color-danger); width: 100%; font-size: 15px; margin-top: 8px; font-weight: 600; }
+    .btn-limpar:hover { background: var(--color-danger-soft); }
+
+    #legendaSics span { background: #F1F2F4; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
 
     /* ===== ESTILOS DO RELATÓRIO PDF ===== */
     #relatorio-pdf { display: none; }
@@ -292,7 +319,7 @@
 
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="margin:0">Localização (GPS)</label>
-        <button type="button" onclick="configurarChaveCarto()" style="padding:3px 8px;background:#455a64;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">🗺️ Chave do mapa</button>
+        <button type="button" onclick="configurarChaveCarto()" style="padding:3px 8px;background:#43525C;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">🗺️ Chave do mapa</button>
       </div>
       <div id="mapa"></div>
       <div class="coords" id="coords">Aguardando captura de localização...</div>
@@ -331,8 +358,9 @@
     <div id="telaSics" style="display:none">
       <div id="sicsStatusBar" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#666">
         <span id="sicsStatusTexto">⚙️ Planilha não configurada — usando apenas armazenamento local do aparelho.</span>
-        <button type="button" onclick="configurarChaveCarto()" style="margin-left:auto;padding:4px 10px;background:#455a64;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">🗺️ Chave do mapa</button>
-        <button type="button" onclick="configurarApiSics()" style="padding:4px 10px;background:#455a64;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">⚙️ Configurar Planilha</button>
+        <button type="button" id="btnMinhaLocalizacao" onclick="alternarMinhaLocalizacao()" style="margin-left:auto;padding:4px 10px;background:var(--color-neutral);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">📍 Minha localização</button>
+        <button type="button" onclick="configurarChaveCarto()" style="padding:4px 10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">🗺️ Chave do mapa</button>
+        <button type="button" onclick="configurarApiSics()" style="padding:4px 10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">⚙️ Configurar Planilha</button>
       </div>
       <div id="mapaSics" style="height:420px;border-radius:6px;margin-bottom:10px"></div>
       <div id="legendaSics" style="display:flex;gap:14px;margin-bottom:10px;font-size:13px;color:#444">
@@ -340,8 +368,8 @@
       </div>
       <button type="button" class="btn-gps" onclick="abrirFormSic()">+ Novo SIC</button>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button type="button" onclick="exportarSics()" style="flex:1;margin-top:0;padding:10px;background:#455a64;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer">⬇️ Exportar SICs</button>
-        <button type="button" onclick="document.getElementById('inputImportarSics').click()" style="flex:1;margin-top:0;padding:10px;background:#455a64;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer">⬆️ Importar SICs</button>
+        <button type="button" onclick="exportarSics()" style="flex:1;margin-top:0;padding:10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer">⬇️ Exportar SICs</button>
+        <button type="button" onclick="document.getElementById('inputImportarSics').click()" style="flex:1;margin-top:0;padding:10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer">⬆️ Importar SICs</button>
         <input type="file" id="inputImportarSics" accept="application/json,.json" style="display:none" onchange="importarSics(this)" />
       </div>
       <div id="importStatus" style="font-size:12px;color:#666;margin-top:4px"></div>
@@ -355,7 +383,7 @@
         <label>Buscar Endereço (requer internet)</label>
         <div style="display:flex;gap:8px">
           <input type="text" id="sicBuscaEndereco" placeholder="Ex: Rua X, 123, Bairro" style="flex:1" />
-          <button type="button" onclick="buscarEnderecoSic()" style="margin-top:0;padding:8px 14px;background:#455a64;color:#fff;border-radius:4px;font-size:13px">🔍 Buscar</button>
+          <button type="button" onclick="buscarEnderecoSic()" style="margin-top:0;padding:8px 14px;background:#43525C;color:#fff;border-radius:4px;font-size:13px">🔍 Buscar</button>
         </div>
         <div id="sicResultadosBusca"></div>
         <div class="grid-endereco">
@@ -421,7 +449,7 @@
       lista.innerHTML = itens.map(b =>
         `<div style="padding:8px 10px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;"
           onmousedown="selecionarBairro('${b.replace(/'/g, "\\'")}')"
-          onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background=''">${b}</div>`
+          onmouseover="this.style.background='#E7F2EC'" onmouseout="this.style.background=''">${b}</div>`
       ).join('');
       lista.style.display = 'block';
     }
@@ -467,6 +495,10 @@
     let latitude = null;
     let longitude = null;
     let vistoriaSicId = null; // quando a vistoria foi iniciada a partir de um SIC, guarda o id pra vincular o PDF gerado a esse ponto
+    let watchIdSics = null; // id do geolocation.watchPosition ativo no mapa de SICs
+    let marcadorMinhaLocalizacao = null;
+    let circuloPrecisaoLocalizacao = null;
+    let permissaoLocalizacaoNegada = false; // evita ficar repetindo alerta toda vez que a aba abre sozinha
     let mapaImagemBase64 = null;
     let contadorArvores = 0;
     
@@ -572,7 +604,7 @@
         el.style.color = '#666';
       } else {
         el.textContent = '🟢 Conectado à planilha.';
-        el.style.color = '#2e7d32';
+        el.style.color = '#1E6B4F';
       }
     }
 
@@ -585,7 +617,7 @@
         if (!dados.ok) throw new Error(dados.erro || 'Erro desconhecido');
         sics = dados.sics || [];
         localStorage.setItem('sics', JSON.stringify(sics)); // cache local, para funcionar offline depois
-        atualizarStatusBarSics('🟢 Conectado à planilha — dados atualizados agora.', '#2e7d32');
+        atualizarStatusBarSics('🟢 Conectado à planilha — dados atualizados agora.', '#1E6B4F');
         renderMarcadoresSics();
       } catch (e) {
         atualizarStatusBarSics('🔴 Sem conexão com a planilha — mostrando a última cópia salva neste aparelho (pode estar desatualizada).', '#c62828');
@@ -608,6 +640,9 @@
         atualizarStatusBarSics();
         if (sicsApiUrl) carregarSicsRemoto();
         else renderMarcadoresSics();
+        if (!watchIdSics) alternarMinhaLocalizacao(true); // mostra a posição automaticamente, como no Google Maps
+      } else {
+        pararMinhaLocalizacao(); // sai da aba do mapa: para de gastar GPS/bateria à toa
       }
     }
 
@@ -619,6 +654,69 @@
           definirLocalSic(e.latlng.lat, e.latlng.lng);
         }
       });
+    }
+
+    // Mostra a posição atual do usuário no mapa de SICs (ponto azul, ao vivo), só para
+    // orientação em campo — nunca entra no relatório/PDF.
+    function alternarMinhaLocalizacao(automatico) {
+      if (watchIdSics) {
+        pararMinhaLocalizacao();
+        return;
+      }
+      if (!navigator.geolocation) {
+        alert('Geolocalização não é suportada neste navegador.');
+        return;
+      }
+      if (automatico && permissaoLocalizacaoNegada) return; // já negou antes: não fica pedindo de novo sozinho ao abrir a aba
+      if (!automatico) permissaoLocalizacaoNegada = false; // toque manual sempre tenta de novo
+
+      const btn = document.getElementById('btnMinhaLocalizacao');
+      btn.textContent = '📍 Localizando...';
+
+      let centralizouUmaVez = false;
+      watchIdSics = navigator.geolocation.watchPosition(pos => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+
+        if (!marcadorMinhaLocalizacao) {
+          const iconePosicao = L.divIcon({
+            className: '',
+            html: '<div style="width:16px;height:16px;border-radius:50%;background:#1976d2;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>',
+            iconSize: [16, 16], iconAnchor: [8, 8]
+          });
+          marcadorMinhaLocalizacao = L.marker([lat, lng], { icon: iconePosicao, zIndexOffset: 1000 }).addTo(mapaSics);
+          circuloPrecisaoLocalizacao = L.circle([lat, lng], { radius: accuracy, color: '#1976d2', weight: 1, fillColor: '#1976d2', fillOpacity: 0.12 }).addTo(mapaSics);
+        } else {
+          marcadorMinhaLocalizacao.setLatLng([lat, lng]);
+          circuloPrecisaoLocalizacao.setLatLng([lat, lng]).setRadius(accuracy);
+        }
+
+        btn.textContent = '📍 Ao vivo (toque p/ parar)';
+        btn.style.background = '#1976d2';
+
+        if (!centralizouUmaVez) {
+          mapaSics.setView([lat, lng], 16);
+          centralizouUmaVez = true;
+        }
+      }, err => {
+        if (err.code === err.PERMISSION_DENIED) {
+          permissaoLocalizacaoNegada = true;
+          alert('Permissão de localização negada. Pra ver sua posição no mapa, permita o acesso à localização nas configurações do navegador e toque em "📍 Minha localização" de novo.');
+        } else {
+          alert('Não foi possível obter sua localização: ' + err.message);
+        }
+        pararMinhaLocalizacao();
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    }
+
+    function pararMinhaLocalizacao() {
+      if (watchIdSics) {
+        navigator.geolocation.clearWatch(watchIdSics);
+        watchIdSics = null;
+      }
+      if (marcadorMinhaLocalizacao) { mapaSics.removeLayer(marcadorMinhaLocalizacao); marcadorMinhaLocalizacao = null; }
+      if (circuloPrecisaoLocalizacao) { mapaSics.removeLayer(circuloPrecisaoLocalizacao); circuloPrecisaoLocalizacao = null; }
+      const btn = document.getElementById('btnMinhaLocalizacao');
+      if (btn) { btn.textContent = '📍 Minha localização'; btn.style.background = 'var(--color-neutral)'; }
     }
 
     function definirLocalSic(lat, lng) {
@@ -651,7 +749,7 @@
         document.getElementById('sicData').value = s.dataSolicitacao || '';
         document.getElementById('sicStatus').value = s.status || 'Pendente';
         document.getElementById('sicObs').value = s.observacoes || '';
-        atualizarStatusParecer(s.parecerPdfUrl);
+        atualizarStatusParecer(s.parecerPdfUrl, s.id);
         if (s.lat && s.lng) {
           definirLocalSic(s.lat, s.lng);
           mapaSics.setView([s.lat, s.lng], 17);
@@ -661,7 +759,7 @@
         document.getElementById('sicTipoServico').value = '';
         document.getElementById('sicStatus').value = 'Pendente';
         document.getElementById('sicResultadosBusca').innerHTML = '';
-        atualizarStatusParecer(null);
+        atualizarStatusParecer(null, null);
         const coordsEl = document.getElementById('sicCoords');
         coordsEl.textContent = 'Toque no mapa para marcar o local, ou busque o endereço acima.';
         delete coordsEl.dataset.lat;
@@ -669,11 +767,13 @@
       }
     }
 
-    function atualizarStatusParecer(url) {
+    function atualizarStatusParecer(url, id) {
       const el = document.getElementById('sicParecerStatus');
       if (url) {
-        el.innerHTML = `📄 Já existe um parecer (relatório) em PDF vinculado a este ponto — <a href="${url}" target="_blank" rel="noopener">abrir PDF</a>.`;
-        el.style.color = '#2e7d32';
+        el.innerHTML = `📄 Já existe um parecer (relatório) em PDF vinculado a este ponto —
+          <a href="${url}" target="_blank" rel="noopener">abrir PDF</a> ·
+          <a href="#" onclick="editarParecerDeSic('${id}'); return false;">✏️ editar parecer</a>`;
+        el.style.color = '#1E6B4F';
       } else {
         el.textContent = 'Nenhum parecer/relatório em PDF vinculado a este ponto ainda. Gere pela aba Vistoria, clicando em "Iniciar Vistoria" a partir deste SIC.';
         el.style.color = '#666';
@@ -763,7 +863,7 @@
           });
           const dados = await resp.json();
           if (!dados.ok) throw new Error(dados.erro || 'Erro ao salvar');
-          atualizarStatusBarSics('🟢 Salvo na planilha com sucesso.', '#2e7d32');
+          atualizarStatusBarSics('🟢 Salvo na planilha com sucesso.', '#1E6B4F');
         } catch (e) {
           atualizarStatusBarSics('🔴 Salvo apenas neste aparelho — não foi possível enviar para a planilha agora (sem internet?). Tente novamente mais tarde.', '#c62828');
         }
@@ -785,7 +885,7 @@
           });
           const dados = await resp.json();
           if (!dados.ok) throw new Error(dados.erro || 'Erro ao excluir');
-          atualizarStatusBarSics('🟢 Excluído da planilha com sucesso.', '#2e7d32');
+          atualizarStatusBarSics('🟢 Excluído da planilha com sucesso.', '#1E6B4F');
         } catch (e) {
           atualizarStatusBarSics('🔴 Excluído apenas neste aparelho — não foi possível excluir da planilha agora (sem internet?).', '#c62828');
         }
@@ -826,7 +926,7 @@
           });
           localStorage.setItem('sics', JSON.stringify(sics));
           renderMarcadoresSics();
-          statusDiv.style.color = '#2e7d32';
+          statusDiv.style.color = '#1E6B4F';
           statusDiv.textContent = `✅ Importado: ${novos} novo(s), ${atualizados} atualizado(s).`;
         } catch (err) {
           statusDiv.style.color = '#c62828';
@@ -843,7 +943,7 @@
       marcadoresSics = [];
       const cores = { 'Pendente': '#e53935', 'Em andamento': '#fb8c00', 'Concluído': '#1565c0' };
       sics.forEach(s => {
-        const cor = cores[s.status] || '#455a64';
+        const cor = cores[s.status] || '#43525C';
         const temParecer = !!s.parecerPdfUrl;
         const icone = L.divIcon({
           className: '',
@@ -864,8 +964,9 @@
             ${s.observacoes ? 'Obs: ' + s.observacoes + '<br>' : ''}
             ${temParecer ? '<a href="' + s.parecerPdfUrl + '" target="_blank" rel="noopener">📄 Ver Parecer (PDF)</a><br>' : '<span style="color:#999">Sem parecer gerado</span><br>'}
             <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-              <button onclick="iniciarVistoriaDeSic('${s.id}')" style="background:#2e7d32;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Iniciar Vistoria</button>
-              <button onclick="abrirFormSic('${s.id}')" style="background:#455a64;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Editar</button>
+              <button onclick="iniciarVistoriaDeSic('${s.id}')" style="background:#1E6B4F;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Iniciar Vistoria</button>
+              ${temParecer ? '<button onclick="editarParecerDeSic(\'' + s.id + '\')" style="background:#43525C;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">✏️ Editar Parecer</button>' : ''}
+              <button onclick="abrirFormSic('${s.id}')" style="background:#43525C;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Editar</button>
               <button onclick="excluirSic('${s.id}')" style="background:#c62828;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px">Excluir</button>
             </div>
           </div>
@@ -1268,8 +1369,8 @@
             <option value="Retirada sem Substituição">Retirada sem Substituição</option>
             <option value="Retirada com Substituição">Retirada com Substituição</option>
           </select>
-          <div class="bloco-reposicao" style="display:none;margin-top:10px;padding:12px;border:1px dashed #2e7d32;border-radius:6px;background:#f1f8f1">
-            <h3 style="margin:0 0 8px;color:#2e7d32;font-size:14px">🌱 Plantio de Reposição</h3>
+          <div class="bloco-reposicao" style="display:none;margin-top:10px;padding:12px;border:1px dashed #1E6B4F;border-radius:6px;background:#f1f8f1">
+            <h3 style="margin:0 0 8px;color:#1E6B4F;font-size:14px">🌱 Plantio de Reposição</h3>
             <label>Espécie a Plantar</label>
             ${espWidgetHtml('repos_especie', '🔍 Buscar espécie a plantar...')}
             <div class="grid-enq">
@@ -1300,7 +1401,7 @@
           <div class="diag-selecionados"></div>
           <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
             <input type="text" class="diag-outro" placeholder="✏️ Outro (digite e pressione +)" style="flex:1" />
-            <button type="button" onclick="adicionarOutroDiag(this)" style="margin-top:0;padding:8px 14px;background:#455a64;color:#fff;border-radius:4px;font-size:13px">+</button>
+            <button type="button" onclick="adicionarOutroDiag(this)" style="margin-top:0;padding:8px 14px;background:#43525C;color:#fff;border-radius:4px;font-size:13px">+</button>
           </div>
         </div>
         ${campoIndicacao}
@@ -1378,7 +1479,7 @@
           <div class="esp-selecionada-container"></div>
           <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
             <input type="text" class="esp-outro" placeholder="✏️ Outra espécie (digite e pressione +)" style="flex:1" />
-            <button type="button" onclick="adicionarOutraEsp(this)" style="margin-top:0;padding:8px 14px;background:#455a64;color:#fff;border-radius:4px;font-size:13px">+</button>
+            <button type="button" onclick="adicionarOutraEsp(this)" style="margin-top:0;padding:8px 14px;background:#43525C;color:#fff;border-radius:4px;font-size:13px">+</button>
           </div>
         </div>`;
     }
@@ -1584,6 +1685,181 @@
       // Inicializa widgets de diagnóstico no bloco recém-adicionado
       div.querySelectorAll('.diag-widget').forEach(w => initDiagWidget(w));
       div.querySelectorAll('.esp-widget').forEach(w => initEspWidget(w));
+    }
+
+    // Coleta todos os dados preenchidos no formulário de Vistoria (mesmo formato usado ao
+    // gerar o PDF), pra guardar como "rascunho" editável vinculado ao SIC.
+    function coletarDadosFormulario() {
+      return {
+        relatorioNumero: relatorioNumeroInput.value,
+        referencia: document.getElementById('referencia').value,
+        numeroReferencia: document.getElementById('numeroReferencia').value,
+        endereco: {
+          bairro: document.getElementById('bairro').value,
+          rua: document.getElementById('rua').value,
+          numero: document.getElementById('numeroEndereco').value
+        },
+        localizacao: latitude && longitude ? { latitude, longitude } : null,
+        servico: servicoInput.value,
+        arvores: Array.from(document.querySelectorAll('.bloco-arvore')).map(b => {
+          const d = {};
+          b.querySelectorAll('[data-field]').forEach(f => {
+            if (f.dataset.field === 'diagnostico') {
+              d['diagnostico'] = f.value ? f.value.split('||') : [];
+            } else if (f.type === 'checkbox') {
+              d[f.dataset.field] = f.checked;
+            } else {
+              d[f.dataset.field] = f.value;
+            }
+          });
+          d['fotos'] = coletarFotosArvore(b);
+          return d;
+        }),
+        observacoes: document.getElementById('observacoes').value,
+        responsavelTecnico: responsavelInput.value,
+        dataRelatorio: document.getElementById('dataRelatorio').value
+      };
+    }
+
+    // Repopula um bloco de árvore (elemento .bloco-arvore) com os dados salvos no rascunho.
+    function preencherBlocoArvore(bloco, d) {
+      if (!d) return;
+      bloco.querySelectorAll('[data-field]').forEach(f => {
+        const campo = f.dataset.field;
+
+        if (campo === 'diagnostico') {
+          const selecionados = d.diagnostico || [];
+          f.value = selecionados.join('||');
+          const widget = f.nextElementSibling;
+          if (widget && widget.classList.contains('diag-widget')) {
+            renderListaDiag(widget, DIAGNOSTICOS);
+            renderTagsDiag(widget, selecionados);
+          }
+          return;
+        }
+
+        if (f.type === 'checkbox') {
+          f.checked = !!d[campo];
+          return;
+        }
+
+        if (f.type === 'hidden') {
+          const valor = d[campo] || '';
+          f.value = valor;
+          const proximo = f.nextElementSibling;
+          if (proximo && proximo.classList.contains('esp-widget')) {
+            renderEspSelecionada(proximo, valor);
+            renderListaEsp(proximo, ESPECIES);
+          } else if (proximo && proximo.classList.contains('btn-group-posicao')) {
+            proximo.querySelectorAll('.btn-posicao').forEach(btn => {
+              btn.classList.toggle('active', btn.textContent.trim() === valor);
+            });
+          }
+          return;
+        }
+
+        f.value = d[campo] !== undefined && d[campo] !== null ? d[campo] : '';
+
+        // Campos que disparam lógica extra ao mudar (enquadramento, bloco de reposição etc.)
+        if (campo === 'indicacao') {
+          const reposDiv = bloco.querySelector('.bloco-reposicao');
+          if (reposDiv) reposDiv.style.display = f.value === 'Retirada com Substituição' ? 'block' : 'none';
+        }
+        if (['altura','tipo_local','situacao_especial','altura_faixa','area_livre','executa_calcamento'].includes(campo)) {
+          atualizarEnquadramento(f);
+        }
+        if (['repos_area_livre','repos_altura_faixa'].includes(campo)) {
+          atualizarEnquadramentoReposicao(f);
+        }
+      });
+
+      // Fotos da árvore
+      (d.fotos || []).forEach((src, i) => {
+        const img = bloco.querySelector(`.preview-arvore[data-foto="${i}"]`);
+        if (img && src) { img.src = src; img.style.display = 'block'; }
+      });
+    }
+
+    // Repopula o formulário inteiro de Vistoria a partir de um rascunho salvo (usado ao
+    // clicar em "Editar Parecer" num SIC que já tem um parecer gerado).
+    function preencherFormularioDeRegistro(dados) {
+      if (!dados) return;
+
+      relatorioNumeroInput.value = dados.relatorioNumero || gerarNumeroRelatorio();
+
+      document.querySelectorAll('.btn-ref').forEach(b => b.classList.toggle('active', b.textContent.trim() === dados.referencia));
+      document.getElementById('referencia').value = dados.referencia || '';
+      document.getElementById('numeroReferencia').value = dados.numeroReferencia || '';
+
+      document.getElementById('bairro').value = dados.endereco?.bairro || '';
+      const bairroInputEl = document.getElementById('bairroInput');
+      if (bairroInputEl) bairroInputEl.value = dados.endereco?.bairro || '';
+      document.getElementById('rua').value = dados.endereco?.rua || '';
+      document.getElementById('numeroEndereco').value = dados.endereco?.numero || '';
+
+      if (!mapa) initMapa();
+      if (dados.localizacao) {
+        setTimeout(() => {
+          mapa.invalidateSize();
+          mapa.setView([dados.localizacao.latitude, dados.localizacao.longitude], 18);
+          if (!marcador) marcador = L.marker([dados.localizacao.latitude, dados.localizacao.longitude]).addTo(mapa);
+          else marcador.setLatLng([dados.localizacao.latitude, dados.localizacao.longitude]);
+          latitude = dados.localizacao.latitude;
+          longitude = dados.localizacao.longitude;
+          coordsDiv.innerText = `Lat: ${latitude.toFixed(6)} | Long: ${longitude.toFixed(6)}`;
+        }, 150);
+      }
+
+      document.querySelectorAll('.btn-servico').forEach(b => b.classList.toggle('active', b.textContent.trim() === dados.servico));
+      servicoInput.value = dados.servico || '';
+      arvoresContainer.innerHTML = '';
+      contadorArvores = 0;
+      (dados.arvores || []).forEach(a => {
+        adicionarArvore();
+        const bloco = arvoresContainer.lastElementChild;
+        if (bloco) preencherBlocoArvore(bloco, a);
+      });
+
+      document.getElementById('observacoes').value = dados.observacoes || '';
+      responsavelInput.value = dados.responsavelTecnico || '';
+      document.getElementById('dataRelatorio').value = dados.dataRelatorio || '';
+    }
+
+    // Abre a aba Vistoria pré-preenchida com o parecer já gerado para esse SIC, pra revisar
+    // com calma e gerar de novo (substitui o PDF e o rascunho anteriores).
+    async function editarParecerDeSic(id) {
+      const s = sics.find(x => x.id === id);
+      if (!s) return;
+      if (!s.parecerPdfUrl) {
+        alert('Esse ponto ainda não tem parecer gerado. Use "Iniciar Vistoria" para criar um.');
+        return;
+      }
+      if (!sicsApiUrl) {
+        alert('Configure a conexão com a planilha (⚙️ Configurar Planilha) para editar o parecer.');
+        return;
+      }
+      if (!s.parecerRascunhoUrl) {
+        alert('Esse parecer foi gerado antes desse recurso existir (ou fora do app), então não há dados salvos para editar. Você pode gerar um novo parecer do zero em "Iniciar Vistoria" — ele vai substituir o PDF atual.');
+        return;
+      }
+
+      try {
+        const resp = await fetch(sicsApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'getRascunho', id })
+        });
+        const dados = await resp.json();
+        if (!dados.ok) throw new Error(dados.erro || 'Erro ao buscar o rascunho do parecer');
+        if (!dados.rascunho) throw new Error('Rascunho vazio ou não encontrado');
+
+        const registro = JSON.parse(dados.rascunho);
+        vistoriaSicId = id; // gerar de novo vai substituir o PDF/rascunho deste mesmo ponto
+        mostrarTela('vistoria');
+        preencherFormularioDeRegistro(registro);
+      } catch (e) {
+        alert('Não foi possível carregar o parecer para edição: ' + e.message);
+      }
     }
 
     document.getElementById('dataForm').addEventListener('submit', e => {
@@ -2454,25 +2730,28 @@
           addRodape(numPag, totalPaginas);
         }
 
-        // Se essa vistoria foi iniciada a partir de um SIC ("Iniciar Vistoria" no mapa),
-        // vincula o PDF gerado a esse ponto: sobe pro Drive via planilha e salva o link na linha do SIC.
+        // Se essa vistoria foi iniciada a partir de um SIC ("Iniciar Vistoria" no mapa) ou é a edição
+        // de um parecer já existente, vincula o PDF gerado a esse ponto: sobe pro Drive via planilha,
+        // junto com um "rascunho" com os dados do formulário (pra poder reabrir e editar depois),
+        // e salva os links na linha do SIC.
         const sicVinculado = vistoriaSicId;
         const statusPdfEl = document.getElementById('vistoriaPdfStatus');
         if (sicVinculado && sicsApiUrl) {
           statusPdfEl.textContent = '🔄 Vinculando relatório ao ponto no mapa...';
           statusPdfEl.style.color = '#666';
           const pdfBase64 = doc.output('datauristring').split(',')[1];
+          const rascunhoJson = JSON.stringify(coletarDadosFormulario());
           fetch(sicsApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'uploadParecer', id: sicVinculado, nomeArquivo, pdfBase64 })
+            body: JSON.stringify({ action: 'uploadParecer', id: sicVinculado, nomeArquivo, pdfBase64, rascunhoJson })
           }).then(r => r.json()).then(dados => {
             if (!dados.ok) throw new Error(dados.erro || 'Erro ao vincular relatório');
-            sics = sics.map(s => s.id === sicVinculado ? { ...s, parecerPdfUrl: dados.url } : s);
+            sics = sics.map(s => s.id === sicVinculado ? { ...s, parecerPdfUrl: dados.url, parecerRascunhoUrl: dados.rascunhoUrl } : s);
             localStorage.setItem('sics', JSON.stringify(sics));
             if (typeof renderMarcadoresSics === 'function') renderMarcadoresSics();
-            statusPdfEl.textContent = '🟢 Relatório vinculado ao ponto — já pode ser consultado em campo (ícone 📄 no mapa).';
-            statusPdfEl.style.color = '#2e7d32';
+            statusPdfEl.textContent = '🟢 Relatório vinculado ao ponto — já pode ser consultado e editado depois em campo (ícone 📄 no mapa).';
+            statusPdfEl.style.color = '#1E6B4F';
           }).catch(e => {
             statusPdfEl.textContent = '🔴 PDF baixado normalmente, mas não foi possível vincular ao ponto agora (sem internet?): ' + e.message;
             statusPdfEl.style.color = '#c62828';
