@@ -139,6 +139,9 @@
     .btn-limpar { background: #fff; color: var(--color-danger); border: 1.5px solid var(--color-danger); width: 100%; font-size: 15px; margin-top: 8px; font-weight: 600; }
     .btn-limpar:hover { background: var(--color-danger-soft); }
 
+    .btn-mini { margin-top: 0; padding: 6px 12px; font-size: 12px; line-height: 1.2; white-space: nowrap; flex-shrink: 0; background: var(--color-neutral); color: #fff; border: none; border-radius: var(--radius-md); cursor: pointer; }
+    .btn-mini:hover { background: var(--color-neutral-dark); }
+
     #legendaSics span { background: #F1F2F4; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
 
     /* ===== ESTILOS DO RELATÓRIO PDF ===== */
@@ -356,11 +359,10 @@
     </div>
 
     <div id="telaSics" style="display:none">
-      <div id="sicsStatusBar" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#666">
-        <span id="sicsStatusTexto">⚙️ Planilha não configurada — usando apenas armazenamento local do aparelho.</span>
-        <button type="button" id="btnMinhaLocalizacao" onclick="alternarMinhaLocalizacao()" style="margin-left:auto;padding:4px 10px;background:var(--color-neutral);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">📍 Minha localização</button>
-        <button type="button" onclick="configurarChaveCarto()" style="padding:4px 10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">🗺️ Chave do mapa</button>
-        <button type="button" onclick="configurarApiSics()" style="padding:4px 10px;background:#43525C;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">⚙️ Configurar Planilha</button>
+      <div id="sicsStatusBar" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;color:#666;flex-wrap:nowrap">
+        <span id="sicsStatusTexto" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">⚙️ Sem planilha</span>
+        <button type="button" id="btnMinhaLocalizacao" class="btn-mini" onclick="alternarMinhaLocalizacao()" style="margin-left:auto">📍 Posição</button>
+        <button type="button" class="btn-mini" onclick="configurarApiSics()" title="Configurar planilha" aria-label="Configurar planilha">⚙️</button>
       </div>
       <div id="mapaSics" style="height:420px;border-radius:6px;margin-bottom:10px"></div>
       <div id="legendaSics" style="display:flex;gap:14px;margin-bottom:10px;font-size:13px;color:#444">
@@ -600,27 +602,28 @@
       const el = document.getElementById('sicsStatusTexto');
       if (msg) { el.textContent = msg; el.style.color = cor || '#666'; return; }
       if (!sicsApiUrl) {
-        el.textContent = '⚙️ Planilha não configurada — usando apenas armazenamento local do aparelho.';
+        el.textContent = '⚙️ Sem planilha'; el.title = 'Planilha não configurada — usando apenas o armazenamento local do aparelho.';
         el.style.color = '#666';
       } else {
-        el.textContent = '🟢 Conectado à planilha.';
+        el.textContent = '🟢 Conectado'; el.title = '';
         el.style.color = '#1E6B4F';
       }
     }
 
     async function carregarSicsRemoto() {
       if (!sicsApiUrl) return;
-      atualizarStatusBarSics('🔄 Carregando dados da planilha...', '#666');
+      atualizarStatusBarSics('🔄 Carregando...', '#666');
       try {
         const resp = await fetch(sicsApiUrl);
         const dados = await resp.json();
         if (!dados.ok) throw new Error(dados.erro || 'Erro desconhecido');
         sics = dados.sics || [];
         localStorage.setItem('sics', JSON.stringify(sics)); // cache local, para funcionar offline depois
-        atualizarStatusBarSics('🟢 Conectado à planilha — dados atualizados agora.', '#1E6B4F');
+        atualizarStatusBarSics('🟢 Conectado', '#1E6B4F');
         renderMarcadoresSics();
       } catch (e) {
-        atualizarStatusBarSics('🔴 Sem conexão com a planilha — mostrando a última cópia salva neste aparelho (pode estar desatualizada).', '#c62828');
+        atualizarStatusBarSics('🔴 Sem conexão', '#c62828');
+        document.getElementById('sicsStatusTexto').title = 'Sem conexão com a planilha — mostrando a última cópia salva neste aparelho (pode estar desatualizada).';
         renderMarcadoresSics();
       }
     }
@@ -671,7 +674,7 @@
       if (!automatico) permissaoLocalizacaoNegada = false; // toque manual sempre tenta de novo
 
       const btn = document.getElementById('btnMinhaLocalizacao');
-      btn.textContent = '📍 Localizando...';
+      btn.textContent = '📍 ...';
 
       let centralizouUmaVez = false;
       watchIdSics = navigator.geolocation.watchPosition(pos => {
@@ -690,7 +693,7 @@
           circuloPrecisaoLocalizacao.setLatLng([lat, lng]).setRadius(accuracy);
         }
 
-        btn.textContent = '📍 Ao vivo (toque p/ parar)';
+        btn.textContent = '📍 Posição';
         btn.style.background = '#1976d2';
 
         if (!centralizouUmaVez) {
@@ -700,7 +703,7 @@
       }, err => {
         if (err.code === err.PERMISSION_DENIED) {
           permissaoLocalizacaoNegada = true;
-          alert('Permissão de localização negada. Pra ver sua posição no mapa, permita o acesso à localização nas configurações do navegador e toque em "📍 Minha localização" de novo.');
+          alert('Permissão de localização negada. Pra ver sua posição no mapa, permita o acesso à localização nas configurações do navegador e toque em "📍 Posição" de novo.');
         } else {
           alert('Não foi possível obter sua localização: ' + err.message);
         }
@@ -716,7 +719,7 @@
       if (marcadorMinhaLocalizacao) { mapaSics.removeLayer(marcadorMinhaLocalizacao); marcadorMinhaLocalizacao = null; }
       if (circuloPrecisaoLocalizacao) { mapaSics.removeLayer(circuloPrecisaoLocalizacao); circuloPrecisaoLocalizacao = null; }
       const btn = document.getElementById('btnMinhaLocalizacao');
-      if (btn) { btn.textContent = '📍 Minha localização'; btn.style.background = 'var(--color-neutral)'; }
+      if (btn) { btn.textContent = '📍 Posição'; btn.style.background = ''; }
     }
 
     function definirLocalSic(lat, lng) {
@@ -1700,6 +1703,7 @@
           numero: document.getElementById('numeroEndereco').value
         },
         localizacao: latitude && longitude ? { latitude, longitude } : null,
+        mapaImagem: mapaImagemBase64 || null, // imagem do mapa que vai no PDF (capturada em campo)
         servico: servicoInput.value,
         arvores: Array.from(document.querySelectorAll('.bloco-arvore')).map(b => {
           const d = {};
@@ -1799,14 +1803,24 @@
 
       if (!mapa) initMapa();
       if (dados.localizacao) {
+        latitude = dados.localizacao.latitude;
+        longitude = dados.localizacao.longitude;
+        coordsDiv.innerText = `Lat: ${latitude.toFixed(6)} | Long: ${longitude.toFixed(6)}`;
+        // Reaproveita a imagem do mapa capturada em campo (não depende do GPS do escritório)
+        if (dados.mapaImagem) mapaImagemBase64 = dados.mapaImagem;
         setTimeout(() => {
           mapa.invalidateSize();
-          mapa.setView([dados.localizacao.latitude, dados.localizacao.longitude], 18);
-          if (!marcador) marcador = L.marker([dados.localizacao.latitude, dados.localizacao.longitude]).addTo(mapa);
-          else marcador.setLatLng([dados.localizacao.latitude, dados.localizacao.longitude]);
-          latitude = dados.localizacao.latitude;
-          longitude = dados.localizacao.longitude;
-          coordsDiv.innerText = `Lat: ${latitude.toFixed(6)} | Long: ${longitude.toFixed(6)}`;
+          mapa.setView([latitude, longitude], 18);
+          if (!marcador) marcador = L.marker([latitude, longitude]).addTo(mapa);
+          else marcador.setLatLng([latitude, longitude]);
+          // Rascunhos antigos, sem imagem salva: refaz a imagem a partir das coordenadas gravadas
+          if (!dados.mapaImagem) {
+            mapa.setZoom(17, { animate: false });
+            setTimeout(() => {
+              capturarImagemMapa();
+              setTimeout(() => mapa.setZoom(18, { animate: true }), 2500);
+            }, 1500);
+          }
         }, 150);
       }
 
@@ -1875,6 +1889,7 @@
           numero: document.getElementById('numeroEndereco').value 
         },
         localizacao: latitude && longitude ? { latitude, longitude } : null,
+        mapaImagem: mapaImagemBase64 || null, // imagem do mapa que vai no PDF (capturada em campo)
         servico: servicoInput.value,
         arvores: Array.from(document.querySelectorAll('.bloco-arvore')).map(b => {
           const d = {};
