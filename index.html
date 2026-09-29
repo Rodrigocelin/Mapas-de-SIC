@@ -142,7 +142,11 @@
     .btn-mini { margin-top: 0; padding: 6px 12px; font-size: 12px; line-height: 1.2; white-space: nowrap; flex-shrink: 0; background: var(--color-neutral); color: #fff; border: none; border-radius: var(--radius-md); cursor: pointer; }
     .btn-mini:hover { background: var(--color-neutral-dark); }
 
-    #legendaSics span { background: #F1F2F4; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
+    #legendaSics span { background: #F1F2F4; padding: 5px 12px; white-space: nowrap; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
+    @media (max-width: 480px) {
+      #legendaSics { gap: 6px !important; flex-wrap: nowrap; justify-content: space-between; }
+      #legendaSics span { padding: 4px 8px; font-size: 11px; gap: 4px; flex: 0 1 auto; }
+    }
 
     /* ===== ESTILOS DO RELATÓRIO PDF ===== */
     #relatorio-pdf { display: none; }
@@ -1690,6 +1694,58 @@
       div.querySelectorAll('.esp-widget').forEach(w => initEspWidget(w));
     }
 
+    // Demanda espontânea: cria (ou localiza, se já existir com o mesmo protocolo) um ponto no Mapa de SICs
+    // a partir do endereço e da posição do formulário de Vistoria. Retorna { criado, promessa(id|null) }.
+    // Precisa ser chamada de forma síncrona, antes do formulário ser limpo.
+    function prepararSicEspontaneo() {
+      if (!latitude || !longitude) return { criado: false, promessa: Promise.resolve(null) };
+
+      const protocolo = document.getElementById('numeroReferencia').value.trim();
+      const existente = protocolo ? sics.find(x => String(x.protocolo).trim() === protocolo) : null;
+      if (existente) {
+        if (existente.status === 'Pendente') {
+          existente.status = 'Em andamento';
+          localStorage.setItem('sics', JSON.stringify(sics));
+          sincronizarStatusSic(existente);
+        }
+        return { criado: false, promessa: Promise.resolve(existente.id) };
+      }
+
+      const sic = {
+        id: 'sic_' + Date.now(),
+        protocolo,
+        requerente: '',
+        bairro: document.getElementById('bairro').value,
+        rua: document.getElementById('rua').value,
+        numero: document.getElementById('numeroEndereco').value,
+        lat: latitude,
+        lng: longitude,
+        tipoServico: servicoInput.value,
+        dataSolicitacao: document.getElementById('dataRelatorio').value,
+        status: 'Em andamento',
+        observacoes: 'Criado a partir de vistoria por demanda espontânea.',
+        parecerPdfUrl: '',
+        parecerRascunhoUrl: ''
+      };
+      sics.push(sic);
+      localStorage.setItem('sics', JSON.stringify(sics));
+
+      const promessa = fetch(sicsApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'save', sic })
+      }).then(r => r.json()).then(d => {
+        if (!d.ok) throw new Error(d.erro || 'Erro ao criar o ponto na planilha');
+        return sic.id;
+      }).catch(err => {
+        // Não deixa um ponto "fantasma" só neste aparelho se o envio falhou
+        sics = sics.filter(x => x.id !== sic.id);
+        localStorage.setItem('sics', JSON.stringify(sics));
+        throw err;
+      });
+      return { criado: true, promessa };
+    }
+
     // Coleta todos os dados preenchidos no formulário de Vistoria (mesmo formato usado ao
     // gerar o PDF), pra guardar como "rascunho" editável vinculado ao SIC.
     function coletarDadosFormulario() {
@@ -2745,34 +2801,54 @@
           addRodape(numPag, totalPaginas);
         }
 
-        // Se essa vistoria foi iniciada a partir de um SIC ("Iniciar Vistoria" no mapa) ou é a edição
-        // de um parecer já existente, vincula o PDF gerado a esse ponto: sobe pro Drive via planilha,
-        // junto com um "rascunho" com os dados do formulário (pra poder reabrir e editar depois),
-        // e salva os links na linha do SIC.
+        // Vincula o PDF gerado a um ponto do Mapa de SICs (sobe pro Drive via planilha, junto com um
+        // "rascunho" dos dados pra poder editar depois):
+        //  - vistoria iniciada a partir de um SIC, ou edição de parecer existente: usa esse ponto;
+        //  - demanda espontânea (aba Vistoria aberta direto): cria/localiza um ponto com o endereço
+        //    e a posição informados, pra o parecer ficar no histórico do mapa.
         const sicVinculado = vistoriaSicId;
         const statusPdfEl = document.getElementById('vistoriaPdfStatus');
-        if (sicVinculado && sicsApiUrl) {
-          statusPdfEl.textContent = '🔄 Vinculando relatório ao ponto no mapa...';
+        if (sicsApiUrl) {
           statusPdfEl.style.color = '#666';
           const pdfBase64 = doc.output('datauristring').split(',')[1];
           const rascunhoJson = JSON.stringify(coletarDadosFormulario());
-          fetch(sicsApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'uploadParecer', id: sicVinculado, nomeArquivo, pdfBase64, rascunhoJson })
-          }).then(r => r.json()).then(dados => {
-            if (!dados.ok) throw new Error(dados.erro || 'Erro ao vincular relatório');
-            sics = sics.map(s => s.id === sicVinculado ? { ...s, parecerPdfUrl: dados.url, parecerRascunhoUrl: dados.rascunhoUrl } : s);
-            localStorage.setItem('sics', JSON.stringify(sics));
-            if (typeof renderMarcadoresSics === 'function') renderMarcadoresSics();
-            statusPdfEl.textContent = '🟢 Relatório vinculado ao ponto — já pode ser consultado e editado depois em campo (ícone 📄 no mapa).';
-            statusPdfEl.style.color = '#1E6B4F';
+          let pontoCriado = false;
+          let preparo;
+          if (sicVinculado) {
+            statusPdfEl.textContent = '🔄 Vinculando relatório ao ponto no mapa...';
+            preparo = Promise.resolve(sicVinculado);
+          } else {
+            statusPdfEl.textContent = '🔄 Criando ponto no mapa e vinculando relatório...';
+            const resultado = prepararSicEspontaneo(); // lê o formulário agora, antes de ele ser limpo
+            pontoCriado = resultado.criado;
+            preparo = resultado.promessa;
+          }
+          preparo.then(idSic => {
+            if (!idSic) {
+              statusPdfEl.textContent = '⚠️ PDF baixado, mas o ponto não foi criado no mapa: falta capturar a localização (botão "Capturar localização atual") antes de gerar.';
+              statusPdfEl.style.color = '#e65100';
+              return;
+            }
+            return fetch(sicsApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'uploadParecer', id: idSic, nomeArquivo, pdfBase64, rascunhoJson })
+            }).then(r => r.json()).then(dados => {
+              if (!dados.ok) throw new Error(dados.erro || 'Erro ao vincular relatório');
+              sics = sics.map(x => x.id === idSic ? { ...x, parecerPdfUrl: dados.url, parecerRascunhoUrl: dados.rascunhoUrl } : x);
+              localStorage.setItem('sics', JSON.stringify(sics));
+              if (typeof renderMarcadoresSics === 'function') renderMarcadoresSics();
+              statusPdfEl.textContent = pontoCriado
+                ? '🟢 Ponto criado no Mapa de SICs e relatório vinculado (ícone 📄) — fica no histórico e pode ser editado depois.'
+                : '🟢 Relatório vinculado ao ponto — já pode ser consultado e editado depois em campo (ícone 📄 no mapa).';
+              statusPdfEl.style.color = '#1E6B4F';
+            });
           }).catch(e => {
-            statusPdfEl.textContent = '🔴 PDF baixado normalmente, mas não foi possível vincular ao ponto agora (sem internet?): ' + e.message;
+            statusPdfEl.textContent = '🔴 PDF baixado normalmente, mas não foi possível vincular ao mapa agora (sem internet?): ' + e.message;
             statusPdfEl.style.color = '#c62828';
           });
-        } else if (sicVinculado && !sicsApiUrl) {
-          statusPdfEl.textContent = '⚠️ PDF baixado. Configure a conexão com a planilha (aba Mapa de SICs → Configurar Planilha) para também vincular o relatório ao ponto.';
+        } else if (sicVinculado) {
+          statusPdfEl.textContent = '⚠️ PDF baixado. Configure a conexão com a planilha (aba Mapa de SICs → ⚙️) para também vincular o relatório ao ponto.';
           statusPdfEl.style.color = '#e65100';
         } else {
           statusPdfEl.textContent = '';
