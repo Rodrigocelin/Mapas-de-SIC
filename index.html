@@ -142,6 +142,22 @@
     .btn-mini { margin-top: 0; padding: 6px 12px; font-size: 12px; line-height: 1.2; white-space: nowrap; flex-shrink: 0; background: var(--color-neutral); color: #fff; border: none; border-radius: var(--radius-md); cursor: pointer; }
     .btn-mini:hover { background: var(--color-neutral-dark); }
 
+    /* "Lista de SICs": só existe em telas de computador (tablet/desktop) */
+    .tab-desktop { display: none; }
+    @media (min-width: 768px) {
+      .tab-desktop { display: block; }
+    }
+
+    #listaSicsResumo span { background: #F1F2F4; padding: 5px 12px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+    .lista-sic-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; background: #fff; transition: box-shadow .15s ease, border-color .15s ease; }
+    .lista-sic-item:hover { box-shadow: var(--shadow-card); border-color: var(--color-primary); }
+    .lista-sic-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .lista-sic-info { flex: 1; min-width: 0; }
+    .lista-sic-protocolo { font-weight: 600; font-size: 14px; color: var(--color-text); }
+    .lista-sic-endereco { font-size: 12px; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lista-sic-servico { font-size: 12px; color: var(--color-text-muted); background: #F1F2F4; padding: 4px 10px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+    .lista-sic-vazio { padding: 30px 10px; text-align: center; color: var(--color-text-muted); font-size: 13px; }
+
     #legendaSics span { background: #F1F2F4; padding: 5px 12px; white-space: nowrap; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
     @media (max-width: 480px) {
       #legendaSics { gap: 6px !important; flex-wrap: nowrap; justify-content: space-between; }
@@ -292,6 +308,7 @@
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <div class="btn-tela active" id="tabVistoria" onclick="abrirVistoriaEmBranco()">📋 Vistoria</div>
       <div class="btn-tela" id="tabSics" onclick="mostrarTela('sics')">🗺️ Mapa de SICs</div>
+      <div class="btn-tela tab-desktop" id="tabLista" onclick="mostrarTela('lista')">📑 Lista de SICs</div>
     </div>
 
     <div id="telaVistoria">
@@ -416,6 +433,18 @@
           <button type="button" onclick="fecharFormSic()" class="btn-limpar" style="margin-top:0">Cancelar</button>
         </div>
       </div>
+    </div>
+
+    <div id="telaListaSics" class="tab-desktop" style="display:none">
+      <div id="listaSicsResumo" style="display:flex;gap:10px;margin-bottom:12px;font-size:13px;color:#444;flex-wrap:wrap"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input type="text" id="listaSicsBusca" placeholder="🔍 Buscar por protocolo, endereço ou requerente" oninput="renderListaSics()" style="flex:2;min-width:240px;margin-top:0" />
+        <select id="listaSicsFiltroStatus" onchange="renderListaSics()" style="flex:1;min-width:170px;margin-top:0">
+          <option value="">Todos os status</option>
+          <option>Pendente</option><option>Em andamento</option><option>Concluído</option>
+        </select>
+      </div>
+      <div id="listaSicsContainer"></div>
     </div>
   </div>
 
@@ -625,10 +654,12 @@
         localStorage.setItem('sics', JSON.stringify(sics)); // cache local, para funcionar offline depois
         atualizarStatusBarSics('🟢 Conectado', '#1E6B4F');
         renderMarcadoresSics();
+        renderListaSics();
       } catch (e) {
         atualizarStatusBarSics('🔴 Sem conexão', '#c62828');
         document.getElementById('sicsStatusTexto').title = 'Sem conexão com a planilha — mostrando a última cópia salva neste aparelho (pode estar desatualizada).';
         renderMarcadoresSics();
+        renderListaSics();
       }
     }
 
@@ -639,8 +670,10 @@
 
     function mostrarTela(nome) {      document.getElementById('telaVistoria').style.display = nome === 'vistoria' ? 'block' : 'none';
       document.getElementById('telaSics').style.display = nome === 'sics' ? 'block' : 'none';
+      document.getElementById('telaListaSics').style.display = nome === 'lista' ? 'block' : 'none';
       document.getElementById('tabVistoria').classList.toggle('active', nome === 'vistoria');
       document.getElementById('tabSics').classList.toggle('active', nome === 'sics');
+      document.getElementById('tabLista').classList.toggle('active', nome === 'lista');
       if (nome === 'sics') {
         if (!mapaSics) initMapaSics();
         setTimeout(() => mapaSics.invalidateSize(), 100);
@@ -650,6 +683,10 @@
         if (!watchIdSics) alternarMinhaLocalizacao(true); // mostra a posição automaticamente, como no Google Maps
       } else {
         pararMinhaLocalizacao(); // sai da aba do mapa: para de gastar GPS/bateria à toa
+      }
+      if (nome === 'lista') {
+        if (sicsApiUrl) carregarSicsRemoto(); // também já chama renderListaSics() ao terminar
+        else renderListaSics();
       }
     }
 
@@ -944,13 +981,14 @@
       reader.readAsText(file);
     }
 
+    const CORES_STATUS = { 'Pendente': '#e53935', 'Em andamento': '#fb8c00', 'Concluído': '#1565c0' };
+
     function renderMarcadoresSics() {
       if (!mapaSics) return;
       marcadoresSics.forEach(m => mapaSics.removeLayer(m));
       marcadoresSics = [];
-      const cores = { 'Pendente': '#e53935', 'Em andamento': '#fb8c00', 'Concluído': '#1565c0' };
       sics.forEach(s => {
-        const cor = cores[s.status] || '#43525C';
+        const cor = CORES_STATUS[s.status] || '#43525C';
         const temParecer = !!s.parecerPdfUrl;
         const icone = L.divIcon({
           className: '',
@@ -980,6 +1018,59 @@
         `);
         marcadoresSics.push(marker);
       });
+    }
+
+    const ORDEM_STATUS = { 'Pendente': 0, 'Em andamento': 1, 'Concluído': 2 };
+
+    // Lista de SICs (só aparece em telas de computador): busca + filtro por status + resumo.
+    function renderListaSics() {
+      const cont = document.getElementById('listaSicsContainer');
+      if (!cont) return; // tela só existe em telas largas; se não existir no DOM nesse momento, não há o que renderizar
+
+      const resumo = document.getElementById('listaSicsResumo');
+      const contagem = { 'Pendente': 0, 'Em andamento': 0, 'Concluído': 0 };
+      sics.forEach(s => { if (contagem[s.status] !== undefined) contagem[s.status]++; });
+      resumo.innerHTML = `
+        <span>🔴 ${contagem['Pendente']} Pendente</span>
+        <span>🟠 ${contagem['Em andamento']} Em andamento</span>
+        <span>🔵 ${contagem['Concluído']} Concluído</span>
+        <span>Total: ${sics.length}</span>
+      `;
+
+      const termo = (document.getElementById('listaSicsBusca')?.value || '').toLowerCase().trim();
+      const filtroStatus = document.getElementById('listaSicsFiltroStatus')?.value || '';
+
+      let lista = sics.slice();
+      if (filtroStatus) lista = lista.filter(s => s.status === filtroStatus);
+      if (termo) {
+        lista = lista.filter(s => {
+          const alvo = [s.protocolo, s.requerente, s.bairro, s.rua, s.numero].filter(Boolean).join(' ').toLowerCase();
+          return alvo.includes(termo);
+        });
+      }
+      lista.sort((a, b) => (ORDEM_STATUS[a.status] ?? 9) - (ORDEM_STATUS[b.status] ?? 9) || String(a.protocolo || '').localeCompare(String(b.protocolo || '')));
+
+      if (!lista.length) {
+        cont.innerHTML = '<div class="lista-sic-vazio">Nenhum SIC encontrado.</div>';
+        return;
+      }
+
+      cont.innerHTML = lista.map(s => `
+        <div class="lista-sic-item" onclick="abrirSicDaLista('${s.id}')">
+          <span class="lista-sic-dot" style="background:${CORES_STATUS[s.status] || '#999'}"></span>
+          <div class="lista-sic-info">
+            <div class="lista-sic-protocolo">${s.protocolo || 'Sem protocolo'} ${s.parecerPdfUrl ? '📄' : ''}</div>
+            <div class="lista-sic-endereco">${[s.rua, s.numero].filter(Boolean).join(', ')}${s.bairro ? ' — ' + s.bairro : ''}${s.requerente ? ' · ' + s.requerente : ''}</div>
+          </div>
+          ${s.tipoServico ? `<span class="lista-sic-servico">${s.tipoServico}</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // Clicar num item da lista abre o mesmo modal de edição usado no Mapa de SICs.
+    function abrirSicDaLista(id) {
+      mostrarTela('sics');
+      setTimeout(() => abrirFormSic(id), 150);
     }
 
     function sincronizarStatusSic(sic) {
