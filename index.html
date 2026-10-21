@@ -529,6 +529,7 @@
     let mapa, marcador;
     let latitude = null;
     let longitude = null;
+    let editandoParecerExistente = false; // true quando o formulário foi aberto por "Editar Parecer": o número do relatório não é consumido
     let vistoriaSicId = null; // quando a vistoria foi iniciada a partir de um SIC, guarda o id pra vincular o PDF gerado a esse ponto
     let watchIdSics = null; // id do geolocation.watchPosition ativo no mapa de SICs
     let marcadorMinhaLocalizacao = null;
@@ -550,6 +551,26 @@
       const ano = new Date().getFullYear().toString().slice(-2);
       contadores[ano] = (contadores[ano] || 1) + 1;
       localStorage.setItem('contadoresRelatorio', JSON.stringify(contadores));
+    }
+
+    // Contador compartilhado: a planilha guarda o último número usado no ano. Este aparelho informa
+    // o último que ele já usou e recebe o próximo (sempre o maior entre os dois), então celular e
+    // computador seguem a mesma sequência e o contador nunca volta a 1, mesmo limpando o navegador.
+    // Se estiver sem internet, o contador local continua funcionando e é sincronizado na próxima vez.
+    function sincronizarContadorComPlanilha() {
+      if (!sicsApiUrl) return;
+      const ano = new Date().getFullYear().toString().slice(-2);
+      const ultimoLocal = (contadores[ano] || 1) - 1;
+      fetch(sicsApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'sincronizarContador', ano, ultimoLocal })
+      }).then(r => r.json()).then(d => {
+        if (!d.ok || !d.proximo) return;
+        contadores[ano] = d.proximo;
+        localStorage.setItem('contadoresRelatorio', JSON.stringify(contadores));
+        if (!editandoParecerExistente) relatorioNumeroInput.value = gerarNumeroRelatorio();
+      }).catch(() => { /* sem internet agora: tenta de novo na próxima sincronização */ });
     }
 
     // ===== Provedor de tiles do mapa (configurável) =====
@@ -664,8 +685,10 @@
     }
 
     function abrirVistoriaEmBranco() {
-      vistoriaSicId = null; // clicar direto na aba Vistoria não deve herdar vínculo de um SIC anterior
+      // Durante a edição de um parecer, voltar pra aba Vistoria não pode perder o vínculo nem o número
+      if (!editandoParecerExistente) vistoriaSicId = null; // clicar direto na aba Vistoria não deve herdar vínculo de um SIC anterior
       mostrarTela('vistoria');
+      if (!editandoParecerExistente) sincronizarContadorComPlanilha();
     }
 
     function mostrarTela(nome) {      document.getElementById('telaVistoria').style.display = nome === 'vistoria' ? 'block' : 'none';
@@ -1090,6 +1113,8 @@
       if (!s) return;
 
       vistoriaSicId = id; // o PDF gerado a partir daqui fica vinculado a este SIC
+      editandoParecerExistente = false;
+      sincronizarContadorComPlanilha();
 
       // Marca como "Em andamento" automaticamente ao iniciar a vistoria a partir do SIC
       // (a conclusão continua sendo manual, já que uma vistoria pode não resolver o SIC de primeira)
@@ -2018,6 +2043,7 @@
         vistoriaSicId = id; // gerar de novo vai substituir o PDF/rascunho deste mesmo ponto
         mostrarTela('vistoria');
         preencherFormularioDeRegistro(registro);
+        editandoParecerExistente = !!registro.relatorioNumero; // mantém o nº original e não avança o contador
       } catch (e) {
         alert('Não foi possível carregar o parecer para edição: ' + e.message);
       }
@@ -2070,10 +2096,13 @@
 
     relatorioNumeroInput.value = gerarNumeroRelatorio();
     initMapa();
+    sincronizarContadorComPlanilha();
 
     function limparFormulario() {
       if (!confirm('Limpar todos os dados do formulário? O número do relatório não será consumido.')) return;
       vistoriaSicId = null;
+      editandoParecerExistente = false;
+      relatorioNumeroInput.value = gerarNumeroRelatorio();
 
       // Reseta referência
       document.getElementById('referencia').value = '';
@@ -2456,8 +2485,8 @@
         if (imgMapa) imgMapa.src = mapaImagemBase64;
       }
 
-      // Confirma número agora — relatório sendo gerado
-      confirmarNumeroRelatorio();
+      // Confirma número agora — relatório sendo gerado (edição de parecer existente mantém o número e não avança o contador)
+      if (!editandoParecerExistente) { confirmarNumeroRelatorio(); sincronizarContadorComPlanilha(); }
 
       const btnPdf = document.querySelector('.btn-pdf');
       const textoOriginal = btnPdf.textContent;
@@ -2466,6 +2495,7 @@
 
       function limparAposGerar() {
         vistoriaSicId = null;
+        editandoParecerExistente = false;
         document.getElementById('referencia').value = '';
         document.querySelectorAll('.btn-ref').forEach(b => b.classList.remove('active'));
         document.getElementById('numeroReferencia').value = '';
